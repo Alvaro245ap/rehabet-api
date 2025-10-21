@@ -38,17 +38,33 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.post("/api/register", async (req, res) => {
   try {
     const { email, password, displayName } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: "email and password required" });
+    if (!email || !password) {
+      return res.status(400).json({ error: "email and password required" });
+    }
+
     const hash = await bcrypt.hash(password, 10);
-    const q = `insert into users (email, password_hash, display_name)
-               values ($1,$2,$3) returning id,email,display_name,created_at`;
-    const { rows } = await pool.query(q, [email, hash, displayName || null]);
+
+    // NEW: generate a unique friend code because DB requires it (NOT NULL)
+    const friendCode = await genUniqueFriendCode(pool);
+
+    // IMPORTANT: include friend_code in the insert column list
+    const q = `
+      insert into users (email, password_hash, display_name, friend_code)
+      values ($1, $2, $3, $4)
+      returning id, email, display_name, friend_code, created_at
+    `;
+    const { rows } = await pool.query(q, [email, hash, displayName || null, friendCode]);
+
     res.status(201).json({ user: rows[0] });
   } catch (e) {
-    if (String(e.message).includes("unique")) return res.status(409).json({ error: "email already exists" });
-    console.error(e); res.status(500).json({ error: "server error" });
+    if (String(e.message).includes("unique") && String(e.message).includes("users_email")) {
+      return res.status(409).json({ error: "email already exists" });
+    }
+    console.error(e);
+    res.status(500).json({ error: "server error" });
   }
 });
+
 
 // Login
 app.post("/api/login", async (req, res) => {
@@ -85,4 +101,5 @@ app.post("/api/messages", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("API listening on", PORT));
+
 

@@ -38,6 +38,30 @@ async function uniqueFriendCode(client){
     if(rows.length===0) return code;
   }
 }
+import express from "express";
+import cors from "cors";
+
+const app = express();
+
+// parse JSON bodies
+app.use(express.json());
+
+// CORS (keep your env var CORS_ORIGIN on Render)
+app.use(cors({ origin: process.env.CORS_ORIGIN, credentials: true }));
+
+// ✅ Add this simple health route:
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true });
+});
+
+// ... your other routes ...
+// app.post("/api/register", ...)
+// app.post("/api/login", ...)
+// app.get("/api/messages", ...)
+// app.post("/api/messages", ...)
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("API listening on", PORT));
 
 // Rate limit for auth
 const authLimiter = rateLimit({ windowMs: 60_000, max: 20 });
@@ -182,3 +206,4 @@ app.post('/api/friend-requests', auth, async (req,res)=>{
 
 const port = Number(process.env.PORT||4000);
 app.listen(port, ()=>console.log(`API listening on :${port}`));
+

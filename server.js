@@ -3,6 +3,22 @@ import cors from "cors";
 import pg from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+function makeFriendCode() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let out = "RH-";
+  for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+async function genUniqueFriendCode(pool) {
+  // try up to 5 random codes; then fall back to a timestamp-based code
+  for (let i = 0; i < 5; i++) {
+    const code = makeFriendCode();
+    const { rows } = await pool.query("select 1 from users where friend_code = $1", [code]);
+    if (rows.length === 0) return code;
+  }
+  return "RH-" + Date.now().toString(36).toUpperCase().slice(-6);
+}
 
 const { Pool } = pg;
 
@@ -69,3 +85,4 @@ app.post("/api/messages", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("API listening on", PORT));
+
